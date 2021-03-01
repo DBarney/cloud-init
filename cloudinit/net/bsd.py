@@ -62,6 +62,8 @@ class BSDRenderer(renderer.Renderer):
 
             self.interface_configurations[device_name] = 'DHCP'
 
+            alias_count = -1
+
             for subnet in interface.get("subnets", []):
                 if subnet.get('type') == 'static':
                     if not subnet.get('netmask'):
@@ -73,7 +75,15 @@ class BSDRenderer(renderer.Renderer):
                     LOG.debug('Configuring dev %s with %s / %s', device_name,
                               subnet.get('address'), subnet.get('netmask'))
 
-                    self.interface_configurations[device_name] = {
+                    # If we have added in a config for this interface,
+                    # add this subnet in as an alias
+                    if alias_count > -1:
+                        name = f'{device_name}_alias{alias_count}'
+                    else:
+                        name = device_name
+                    alias_count += 1
+
+                    self.interface_configurations[name] = {
                         'address': subnet.get('address'),
                         'netmask': subnet.get('netmask'),
                     }
