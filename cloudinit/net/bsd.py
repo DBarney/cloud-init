@@ -65,7 +65,32 @@ class BSDRenderer(renderer.Renderer):
             alias_count = -1
 
             for subnet in interface.get("subnets", []):
-                if subnet.get('type') == 'static':
+                if subnet.get('type') == 'static6':
+                    if not subnet.get('netmask'):
+                        LOG.debug(
+                            'Skipping IP %s, because there is no netmask',
+                            subnet.get('address')
+                        )
+                        # not sure how to handle this. is our ipv6 implementation
+                        # correct or not? ip/64 or do we need to pass in the
+                        # netmask for ipv6 interfaces
+                    LOG.debug('Configuring dev %s with %s / %s', device_name,
+                              subnet.get('address'), subnet.get('netmask'))
+
+                    # If we have added in a config for this interface,
+                    # add this subnet in as an alias
+                    if alias_count > -1:
+                        name = f'{device_name}_ipv6_alias{alias_count}'
+                    else:
+                        name = f'{device_name}_ipv6'
+                    alias_count += 1
+
+                    self.interface_configurations[name] = {
+                        'address': subnet.get('address'),
+                        'prefixlen': 64,
+                        'type': 'ipv6',
+                    }
+                elif subnet.get('type') == 'static':
                     if not subnet.get('netmask'):
                         LOG.debug(
                             'Skipping IP %s, because there is no netmask',
@@ -86,6 +111,7 @@ class BSDRenderer(renderer.Renderer):
                     self.interface_configurations[name] = {
                         'address': subnet.get('address'),
                         'netmask': subnet.get('netmask'),
+                        'type': 'ipv4',
                     }
 
     def _route_entries(self, settings, target=None):
@@ -93,15 +119,22 @@ class BSDRenderer(renderer.Renderer):
         for interface in settings.iter_interfaces():
             subnets = interface.get("subnets", [])
             for subnet in subnets:
-                if subnet.get('type') != 'static':
-                    continue
-                gateway = subnet.get('gateway')
-                if gateway and len(gateway.split('.')) == 4:
-                    routes.append({
-                        'network': '0.0.0.0',
-                        'netmask': '0.0.0.0',
-                        'gateway': gateway})
-                routes += subnet.get('routes', [])
+                if subnet.get('type') == 'static6':
+                    gateway = subnet.get('gateway')
+                    if gateway and len(gateway.split('.')) == 4:
+                        routes.append({
+                            'network': '0.0.0.0',
+                            'netmask': '0.0.0.0',
+                            'gateway': gateway})
+                    routes += subnet.get('routes', [])
+                elif subnet.get('type') == 'static':
+                    gateway = subnet.get('gateway')
+                    if gateway and len(gateway.split('.')) == 4:
+                        routes.append({
+                            'network': '0.0.0.0',
+                            'netmask': '0.0.0.0',
+                            'gateway': gateway})
+                    routes += subnet.get('routes', [])
         for route in routes:
             network = route.get('network')
             if not network:
