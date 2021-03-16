@@ -23,11 +23,11 @@ class Renderer(cloudinit.net.bsd.BSDRenderer):
                 if v.get('type') == "ipv4":
                     self.set_rc_config_value(
                         'ifconfig_' + device_name,
-                        'inet ' + v.get('address') + ' netmask ' + v.get('netmask'))
+                        'inet %s netmask %s' % (v.get('address'), v.get('netmask')))
                 elif v.get('type') == "ipv6":
                     self.set_rc_config_value(
                         'ifconfig_' + device_name,
-                        'inet6 ' + v.get('address') + ' prefixlen ' + v.get('prefixlen'))
+                        'inet6 %s prefixlen %s' % (v.get('address'), v.get('prefixlen')))
                     self.set_rc_config_value('ipv6_activate_all_interfaces', 'yes')
             else:
                 self.set_rc_config_value('ifconfig_' + device_name, 'DHCP')
@@ -54,7 +54,7 @@ class Renderer(cloudinit.net.bsd.BSDRenderer):
     def set_route(self, network, netmask, gateway):
         if network == '0.0.0.0':
             self.set_rc_config_value('defaultrouter', gateway)
-        if network == '::':
+        elif network == '::':
             self.set_rc_config_value('ipv6_defaultrouter', gateway)
         else:
             route_name = 'route_net%d' % self._route_cpt

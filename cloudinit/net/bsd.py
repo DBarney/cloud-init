@@ -63,31 +63,32 @@ class BSDRenderer(renderer.Renderer):
             self.interface_configurations[device_name] = 'DHCP'
 
             alias_count = -1
+            alias_count_ipv6 = -1
 
             for subnet in interface.get("subnets", []):
                 if subnet.get('type') == 'static6':
-                    if not subnet.get('netmask'):
+                    if not subnet.get('prefix'):
                         LOG.debug(
-                            'Skipping IP %s, because there is no netmask',
-                            subnet.get('address')
+                            'Skipping IP %s, because there is no prefix',
+                            subnet
                         )
                         # not sure how to handle this. is our ipv6 implementation
                         # correct or not? ip/64 or do we need to pass in the
                         # netmask for ipv6 interfaces
                     LOG.debug('Configuring dev %s with %s / %s', device_name,
-                              subnet.get('address'), subnet.get('netmask'))
+                              subnet.get('address'), subnet.get('prefix'))
 
                     # If we have added in a config for this interface,
                     # add this subnet in as an alias
-                    if alias_count > -1:
-                        name = f'{device_name}_ipv6_alias{alias_count}'
+                    if alias_count_ipv6 > -1:
+                        name = f'{device_name}_ipv6_alias{alias_count_ipv6}'
                     else:
                         name = f'{device_name}_ipv6'
-                    alias_count += 1
+                    alias_count_ipv6 += 1
 
                     self.interface_configurations[name] = {
                         'address': subnet.get('address'),
-                        'prefixlen': 64,
+                        'prefixlen': subnet.get('prefix'),
                         'type': 'ipv6',
                     }
                 elif subnet.get('type') == 'static':
